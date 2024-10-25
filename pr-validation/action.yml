@@ -34,7 +34,7 @@ runs:
         wip: false
 
     - name: Setup Java Build Environment
-      uses: pagopa/mil-actions/setup-java-build-env
+      uses: pagopa/mil-actions/setup-java-build-env@main
       with:
         gh_user: ${{ inputs.gh_user }}
         gh_token: ${{ inputs.gh_token }}
