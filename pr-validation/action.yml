@@ -8,7 +8,7 @@ inputs:
     description: GitHub token.
     required: true
   sonar_token:
-    description: SonarClund token.
+    description: SonarCloud token.
     required: true
 runs:
   using: composite
@@ -39,10 +39,7 @@ runs:
         gh_user: ${{ inputs.gh_user }}
         gh_token: ${{ inputs.gh_token }}
 
-    - name: Checkout the source code
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
-
-    - name: Execute unit-test + Calculate test coverage + SCA with Sonar
+    - name: Execute Maven verify with "validate" profile
       shell: bash
       env:
         SONAR_TOKEN: ${{ inputs.sonar_token }}
