@@ -1,0 +1,81 @@
+name: Setup Java Build Environment
+description: Setup Java build environment, downloading and intalling JDK and Maven.
+inputs:
+  gh_user:
+    description: GitHub username to download dependencies.
+    required: true
+  gh_token:
+    description: GitHub token to download dependencies.
+    required: true
+runs:
+  using: composite
+  steps:
+    #
+    # Cache JDK.
+    #
+    - name: Cache JDK
+      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # 4.1.2
+      id: cache-jdk
+      with:
+        key: OpenJDK21U-jdk_x64_linux_hotspot_21.0.5_11.tar.gz
+        path: |
+          ${{ runner.temp }}/jdk_setup.tar.gz
+          ${{ runner.temp }}/jdk_setup.sha256
+
+    #
+    # Download JDK and verify its hash.
+    #
+    - name: Download JDK and verify its hash
+      if: steps.cache-jdk.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        echo "3c654d98404c073b8a7e66bffb27f4ae3e7ede47d13284c132d40a83144bfd8c  ${{ runner.temp }}/jdk_setup.tar.gz" >> ${{ runner.temp }}/jdk_setup.sha256
+        curl -L "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.5%2B11/OpenJDK21U-jdk_x64_linux_hotspot_21.0.5_11.tar.gz" -o "${{ runner.temp }}/jdk_setup.tar.gz"
+        sha256sum --check --status "${{ runner.temp }}/jdk_setup.sha256"
+
+    #
+    # Setup JDK.
+    #
+    - name: Setup JDK
+      uses: actions/setup-java@b36c23c0d998641eff861008f374ee103c25ac73 # 4.4.0
+      with:
+        distribution: "jdkfile"
+        jdkFile: "${{ runner.temp }}/jdk_setup.tar.gz"
+        java-version: "21"
+        cache: maven
+
+    #
+    # Cache Maven.
+    #
+    - name: Cache Maven
+      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # 4.1.2
+      id: cache-maven
+      with:
+        key: apache-maven-3.9.9-bin.tar.gz
+        path: |
+          ${{ runner.temp }}/maven_setup.tar.gz
+          ${{ runner.temp }}/maven_setup.sha256
+
+    #
+    # Download Maven and verify its hash.
+    #
+    - name: Download Maven and verify its hash
+      if: steps.cache-maven.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        echo "7a9cdf674fc1703d6382f5f330b3d110ea1b512b51f1652846d9e4e8a588d766  ${{ runner.temp }}/maven_setup.tar.gz" >> ${{ runner.temp }}/maven_setup.sha256
+        curl -L "https://archive.apache.org/dist/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz" -o "${{ runner.temp }}/maven_setup.tar.gz"
+        sha256sum --check --status "${{ runner.temp }}/maven_setup.sha256"
+
+    #
+    # Setup Maven.
+    #
+    - name: Setup Maven
+      shell: bash
+      env:
+        GH_USER: ${{ inputs.gh_user }}
+        GH_TOKEN: ${{ inputs.gh_token }}
+      run: |
+        mkdir ${{ runner.temp }}/maven
+        tar -xvf ${{ runner.temp }}/maven_setup.tar.gz -C ${{ runner.temp }}/maven --strip-components=1
+        echo "<settings><servers><server><id>github</id><username>$GH_USER</username><password>$GH_TOKEN</password></server></servers></settings>" >> ${{ runner.temp }}/settings.xml

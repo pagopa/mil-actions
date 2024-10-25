@@ -1,0 +1,49 @@
+name: PR Validation
+description: Validates a pull request.
+inputs:
+  gh_user:
+    description: GitHub username.
+    required: true
+  gh_token:
+    description: GitHub token.
+    required: true
+  sonar_token:
+    description: SonarClund token.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: PR title validation
+      uses: amannn/action-semantic-pull-request@0723387faaf9b38adef4775cd42cfd5155ed6017 # 5.5.3
+      env:
+        GITHUB_TOKEN: ${{ inputs.gh_token }}
+      with:
+        types: |
+          docs
+          refactor
+          chore
+          fix
+          feat
+          breaking
+        requireScope: false
+        subjectPattern: ^[A-Z].+$
+        subjectPatternError: |
+          The subject "{subject}" found in the pull request title "{title}"
+          doesn't match the configured pattern. Please ensure that the subject
+          starts with an uppercase character.
+        wip: false
+
+    - name: Setup Java Build Environment
+      uses: pagopa/mil-actions/setup-java-build-env
+      with:
+        gh_user: ${{ inputs.gh_user }}
+        gh_token: ${{ inputs.gh_token }}
+
+    - name: Checkout the source code
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
+
+    - name: Execute unit-test + Calculate test coverage + SCA with Sonar
+      shell: bash
+      env:
+        SONAR_TOKEN: ${{ inputs.sonar_token }}
+      run: ${{ runner.temp }}/maven/bin/mvn verify -Pvalidate -s ${{ runner.temp }}/settings.xml --no-transfer-progress
