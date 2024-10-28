@@ -14,7 +14,10 @@ inputs:
   release_version:
     description: Version tag to use with container image
     required: true
-
+  skip_test:
+    description: True to skip Maven's test execution
+    required: false
+    default: "false"
 outputs:
   image:
     description: "Built image"
@@ -27,6 +30,7 @@ runs:
     # Execute unit-test + Calculate test coverage + SCA with Sonar.
     #
     - name: Execute unit-test + Calculate test coverage + SCA with Sonar
+      if: ${{ inputs.skip_test }} != 'true'
       shell: bash
       env:
         SONAR_TOKEN: ${{ inputs.sonar_token }}
