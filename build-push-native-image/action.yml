@@ -27,6 +27,15 @@ runs:
   using: composite
   steps:
     #
+    # Setup Java Build Environment.
+    #
+    - name: Setup Java Build Environment
+      uses: pagopa/mil-actions/setup-java-build-env@6dba0fb019f2714767a0b7954fb12ebd7ec0aa3e # 1.0.0
+      with:
+        gh_user: ${{ secrets.GIT_USER }}
+        gh_token: ${{ secrets.GIT_PAT }}
+
+    #
     # Execute unit-test + Calculate test coverage + SCA with Sonar.
     #
     - name: Execute unit-test + Calculate test coverage + SCA with Sonar
