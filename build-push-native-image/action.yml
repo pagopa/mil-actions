@@ -1,0 +1,87 @@
+name: Build and push native container image
+description: Build and push native container image.
+
+inputs:
+  gh_user:
+    description: GitHub username.
+    required: true
+  gh_token:
+    description: GitHub token.
+    required: true
+  sonar_token:
+    description: SonarCloud token.
+    required: true
+  release_version:
+    description: Version tag to use with container image
+    required: true
+
+outputs:
+  image:
+    description: "Built image"
+    value: ${{ steps.get-image.outputs.image }}
+
+runs:
+  using: composite
+  steps:
+    #
+    # Execute unit-test + Calculate test coverage + SCA with Sonar.
+    #
+    - name: Execute unit-test + Calculate test coverage + SCA with Sonar
+      shell: bash
+      env:
+        SONAR_TOKEN: ${{ inputs.sonar_token }}
+      run: |
+        ${{ runner.temp }}/maven/bin/mvn verify \
+          -Pvalidate \
+          -s ${{ runner.temp }}/settings.xml \
+          --no-transfer-progress
+
+    #
+    # Build native executable.
+    #
+    - name: Build native executable
+      shell: bash
+      run: |
+        ${{ runner.temp }}/maven/bin/mvn clean package \
+          -Pnative \
+          -Dmaven.test.skip=true \
+          -Dquarkus.native.container-build=true \
+          -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image@sha256:ce70e1a8016471ff0fc9c8f048cd9e37afddacd3de37ed0bca74201d102e45f5 \
+          -s ${{ runner.temp }}/settings.xml \
+          --no-transfer-progress
+
+    #
+    # Build container image.
+    #
+    - name: Build container image
+      shell: bash
+      env:
+        RELEASE_VERSION: ${{ inputs.release_version }}
+      run: |
+        docker build \
+          -f src/main/docker/Dockerfile.native-micro \
+          -t ghcr.io/${{ github.repository }}:$RELEASE_VERSION \
+          .
+
+    #
+    # Push container image.
+    #
+    - name: Push container image
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.gh_token }}
+      run: |
+        echo "$GH_TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        docker push -a ghcr.io/${{ github.repository }}
+
+    #
+    # Get container image with sha256.
+    #
+    - name: Get container image with sha256
+      id: get-image
+      shell: bash
+      env:
+        RELEASE_VERSION: ${{ inputs.release_version }}
+      run: |
+        temp=$(docker image inspect -f '{{index .RepoDigests 0}}' ghcr.io/${{ github.repository }}:$RELEASE_VERSION)
+        echo "image=${temp/@/:$RELEASE_VERSION@}" >> $GITHUB_OUTPUT
