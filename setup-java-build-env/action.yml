@@ -14,7 +14,7 @@ runs:
     # Cache JDK.
     #
     - name: Cache JDK
-      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # 4.1.2
+      uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # 4.2.2
       id: cache-jdk
       with:
         key: OpenJDK21U-jdk_x64_linux_hotspot_21.0.5_11.tar.gz
@@ -37,7 +37,7 @@ runs:
     # Setup JDK.
     #
     - name: Setup JDK
-      uses: actions/setup-java@b36c23c0d998641eff861008f374ee103c25ac73 # 4.4.0
+      uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # 4.7.0
       with:
         distribution: "jdkfile"
         jdkFile: "${{ runner.temp }}/jdk_setup.tar.gz"
@@ -48,7 +48,7 @@ runs:
     # Cache Maven.
     #
     - name: Cache Maven
-      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # 4.1.2
+      uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # 4.2.2
       id: cache-maven
       with:
         key: apache-maven-3.9.9-bin.tar.gz
