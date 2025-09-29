@@ -14,7 +14,7 @@ runs:
   using: composite
   steps:
     - name: PR title validation
-      uses: amannn/action-semantic-pull-request@0723387faaf9b38adef4775cd42cfd5155ed6017 # 5.5.3
+      uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # 6.1.1
       env:
         GITHUB_TOKEN: ${{ inputs.gh_token }}
       with:
@@ -34,7 +34,7 @@ runs:
         wip: false
 
     - name: Setup Java Build Environment
-      uses: pagopa/mil-actions/setup-java-build-env@2950717fce7be3292c224475f72c36fb56a3539c # 1.2.0
+      uses: pagopa/mil-actions/setup-java-build-env@372a6b1b566cf0973539b95bcc38a389aa35d5b6 # 1.3.0
       with:
         gh_user: ${{ inputs.gh_user }}
         gh_token: ${{ inputs.gh_token }}
