@@ -47,7 +47,7 @@ runs:
           -Pnative \
           -Dmaven.test.skip=true \
           -Dquarkus.native.container-build=true \
-          -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-21@sha256:832c01753ebb631890a9302f989a66ae54424d41e1f09ba9a207d7d734a5acb5
+          -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-21@sha256:832c01753ebb631890a9302f989a66ae54424d41e1f09ba9a207d7d734a5acb5 \
           -s ${{ runner.temp }}/settings.xml \
           --no-transfer-progress
 
