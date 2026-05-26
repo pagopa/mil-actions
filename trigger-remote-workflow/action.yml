@@ -12,17 +12,30 @@ inputs:
     description: Name of the workflow file to trigger in the remote repository.
     required: true
   waiting_after_trigger:
-    description: Seconds to wait after triggering the workflow before checking its status. Default 10 seconds.
+    description: |
+      Seconds to wait after triggering the workflow before checking its status.
+      Default: 10 seconds.
     required: false
     default: "10"
   waiting_between_attempts:
-    description: Seconds to wait between status check attempts. Default 20 seconds.
+    description: |
+      Seconds to wait between status check attempts.
+      Default: 20 seconds.
     required: false
     default: "20"
   max_attempts:
-    description: Maximum number of attempts to check the workflow status before timing out. Default 30 attempts.
+    description: |
+      Maximum number of attempts to check the workflow status before timing out.
+      Default: 30 attempts.
     required: false
     default: "30"
+  workflow_inputs:
+    description: |
+      Comma-separated list of key=value pairs to pass to the remote workflow as inputs.
+      Example:
+        "key1=value1,key2=value2" translates to --raw-field key1=value1 --raw-field key2=value2.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -36,9 +49,21 @@ runs:
         WAITING_AFTER_TRIGGER: ${{ inputs.waiting_after_trigger }}
         WAITING_BETWEEN_ATTEMPTS: ${{ inputs.waiting_between_attempts }}
         MAX_ATTEMPTS: ${{ inputs.max_attempts }}
+        WORKFLOW_INPUTS: ${{ inputs.workflow_inputs }}
       run: |
         echo "🚀 Remote workflow startup..."
-        gh workflow run "$REMOTE_WORKFLOW" --repo "$REMOTE_REPO" || {
+
+        # Build --raw-field flags from comma-separated key=value pairs
+        INPUT_FLAGS=""
+        if [ -n "$WORKFLOW_INPUTS" ]; then
+            IFS=',' read -ra PAIRS <<< "$WORKFLOW_INPUTS"
+            for PAIR in "${PAIRS[@]}"; do
+                PAIR="${PAIR// /}"
+                INPUT_FLAGS="$INPUT_FLAGS --raw-field $PAIR"
+            done
+        fi
+
+        gh workflow run "$REMOTE_WORKFLOW" --repo "$REMOTE_REPO" $INPUT_FLAGS || {
             echo "❌ Failed to trigger remote workflow."
             exit 1
         }
