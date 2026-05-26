@@ -1,0 +1,75 @@
+name: Trigger Remote Workflow
+description: Triggers a workflow hosted by another repository (named remote repo).
+
+inputs:
+  remote_gh_token:
+    description: GitHub token with write permissions to the remote repo.
+    required: true
+  remote_repo:
+    description: Repository hosting the workflow to trigger, in the format owner/repo.
+    required: true
+  remote_workflow:
+    description: Name of the workflow file to trigger in the remote repository.
+    required: true
+  waiting_after_trigger:
+    description: Seconds to wait after triggering the workflow before checking its status. Default 10 seconds.
+    required: false
+    default: "10"
+  waiting_between_attempts:
+    description: Seconds to wait between status check attempts. Default 20 seconds.
+    required: false
+    default: "20"
+  max_attempts:
+    description: Maximum number of attempts to check the workflow status before timing out. Default 30 attempts.
+    required: false
+    default: "30"
+
+runs:
+  using: composite
+  steps:
+    - name: Trigger remote workflow
+      shell: bash
+      env:
+        REMOTE_GH_TOKEN: ${{ inputs.remote_gh_token }}
+        REMOTE_REPO: ${{ inputs.remote_repo }}
+        REMOTE_WORKFLOW: ${{ inputs.remote_workflow }}
+        WAITING_AFTER_TRIGGER: ${{ inputs.waiting_after_trigger }}
+        WAITING_BETWEEN_ATTEMPTS: ${{ inputs.waiting_between_attempts }}
+        MAX_ATTEMPTS: ${{ inputs.max_attempts }}
+      run: |
+        echo "🚀 Remote workflow startup..."
+        gh workflow run "$REMOTE_WORKFLOW" --repo "$REMOTE_REPO" || {
+            echo "❌ Failed to trigger remote workflow."
+            exit 1
+        }
+        
+        echo "⏳ Wait for GitHub to log the execution..."        
+        sleep "$WAITING_AFTER_TRIGGER"
+           
+        RUN_ID=$(gh run list --repo "$REMOTE_REPO" --workflow "$REMOTE_WORKFLOW" --limit 1 --json databaseId --jq '.[0].databaseId')
+        echo "🆔 Run ID: $RUN_ID"
+        
+        echo "⏳ Waiting for the workflow to finish..."
+        STATUS="queued"
+        ATTEMPT=0
+        until [ "$STATUS" = "completed" ] || [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            STATUS=$(gh run view "$RUN_ID" --repo "$REMOTE_REPO" --json status --jq '.status')
+            if [ "$STATUS" != "completed" ]; then
+                echo "🔄 Status: $STATUS | Attempt: $ATTEMPT/$MAX_ATTEMPTS..."
+                sleep "$WAITING_BETWEEN_ATTEMPTS"
+            fi
+        done
+        
+        if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ] && [ "$STATUS" != "completed" ]; then
+            echo "❌ Maximum number of attempts reached."
+            exit 1
+        fi
+        
+        CONCLUSION=$(gh run view "$RUN_ID" --repo "$REMOTE_REPO" --json conclusion --jq '.conclusion')
+        if [ "$CONCLUSION" != "success" ]; then
+            echo "❌ Remote workflow failed: $CONCLUSION"
+            exit 1
+        fi
+        
+        echo "🎉 Remote workflow completed successfully."
