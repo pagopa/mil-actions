@@ -1,0 +1,37 @@
+name: API Invokable Delay
+
+on:
+  workflow_call:
+    inputs:
+      should_succeed:
+        description: "If true, the workflow succeeds after 30s; if false, it fails after 30s"
+        required: true
+        type: boolean
+  workflow_dispatch:
+    inputs:
+      should_succeed:
+        description: "If true, the workflow succeeds after 30s; if false, it fails after 30s"
+        required: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  delayed-result:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait 30 seconds
+        run: sleep 30
+
+      - name: Finish with requested outcome
+        env:
+          SHOULD_SUCCEED: ${{ inputs.should_succeed }}
+        run: |
+          if [ "$SHOULD_SUCCEED" = "true" ]; then
+            echo "Input should_succeed=true -> exiting successfully"
+            exit 0
+          fi
+
+          echo "Input should_succeed=false -> exiting with error"
+          exit 1
