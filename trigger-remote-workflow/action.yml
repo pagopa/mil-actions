@@ -43,7 +43,7 @@ runs:
     - name: Trigger remote workflow
       shell: bash
       env:
-        REMOTE_GH_TOKEN: ${{ inputs.remote_gh_token }}
+        GH_TOKEN: ${{ inputs.remote_gh_token }}
         REMOTE_REPO: ${{ inputs.remote_repo }}
         REMOTE_WORKFLOW: ${{ inputs.remote_workflow }}
         WAITING_AFTER_TRIGGER: ${{ inputs.waiting_after_trigger }}
