@@ -15,6 +15,10 @@ inputs:
     description: True to skip Maven's test execution
     required: false
     default: "false"
+  latest:
+    description: True to also tag the container image as latest
+    required: false
+    default: "false"
 outputs:
   image:
     description: "Built image"
@@ -58,10 +62,17 @@ runs:
       shell: bash
       env:
         RELEASE_VERSION: ${{ inputs.release_version }}
+        LATEST: ${{ inputs.latest }}
       run: |
+        TAGS="-t ghcr.io/${{ github.repository }}:$RELEASE_VERSION"
+
+        if [ "$LATEST" = "true" ]; then
+          TAGS="$TAGS -t ghcr.io/${{ github.repository }}:latest"
+        fi
+
         docker build \
           -f src/main/docker/Dockerfile.native-micro \
-          -t ghcr.io/${{ github.repository }}:$RELEASE_VERSION \
+          $TAGS \
           .
 
     #
