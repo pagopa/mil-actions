@@ -63,11 +63,12 @@ runs:
       env:
         RELEASE_VERSION: ${{ inputs.release_version }}
         LATEST: ${{ inputs.latest }}
+        REPOSITORY: ${{ github.repository }}
       run: |
-        TAGS="-t ghcr.io/${{ github.repository }}:$RELEASE_VERSION"
+        TAGS="-t ghcr.io/$REPOSITORY:$RELEASE_VERSION"
 
         if [ "$LATEST" = "true" ]; then
-          TAGS="$TAGS -t ghcr.io/${{ github.repository }}:latest"
+          TAGS="$TAGS -t ghcr.io/$REPOSITORY:latest"
         fi
 
         docker build \
@@ -82,9 +83,10 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.gh_token }}
+        REPOSITORY: ${{ github.repository }}
       run: |
         echo "$GH_TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-        docker push -a ghcr.io/${{ github.repository }}
+        docker push -a ghcr.io/$REPOSITORY
 
     #
     # Get container image with sha256.
@@ -94,6 +96,7 @@ runs:
       shell: bash
       env:
         RELEASE_VERSION: ${{ inputs.release_version }}
+        REPOSITORY: ${{ github.repository }}
       run: |
-        temp=$(docker image inspect -f '{{index .RepoDigests 0}}' ghcr.io/${{ github.repository }}:$RELEASE_VERSION)
+        temp=$(docker image inspect -f '{{index .RepoDigests 0}}' ghcr.io/$REPOSITORY:$RELEASE_VERSION)
         echo "image=${temp/@/:$RELEASE_VERSION@}" >> $GITHUB_OUTPUT
