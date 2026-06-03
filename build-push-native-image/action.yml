@@ -19,6 +19,10 @@ inputs:
     description: True to also tag the container image as latest
     required: false
     default: "false"
+  additional_tags:
+    description: Additional comma-separated tags to apply to the container image
+    required: false
+    default: ""
 outputs:
   image:
     description: "Built image"
@@ -63,12 +67,28 @@ runs:
       env:
         RELEASE_VERSION: ${{ inputs.release_version }}
         LATEST: ${{ inputs.latest }}
+        ADDITIONAL_TAGS: ${{ inputs.additional_tags }}
         REPOSITORY: ${{ github.repository }}
       run: |
+        set -euo pipefail
+
         TAGS="-t ghcr.io/$REPOSITORY:$RELEASE_VERSION"
 
         if [ "$LATEST" = "true" ]; then
           TAGS="$TAGS -t ghcr.io/$REPOSITORY:latest"
+        fi
+
+        if [ -n "$ADDITIONAL_TAGS" ]; then
+          IFS=',' read -r -a EXTRA_TAGS <<< "$ADDITIONAL_TAGS"
+
+          for raw_tag in "${EXTRA_TAGS[@]}"; do
+            tag="${raw_tag#"${raw_tag%%[![:space:]]*}"}"
+            tag="${tag%"${tag##*[![:space:]]}"}"
+
+            if [ -n "$tag" ]; then
+              TAGS="$TAGS -t ghcr.io/$REPOSITORY:$tag"
+            fi
+          done
         fi
 
         docker build \
