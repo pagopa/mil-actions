@@ -1,0 +1,109 @@
+name: Update <project>-deploy-aks
+description: Updates <project>-deploy-aks.
+
+inputs:
+  gh_token:
+    description: |
+      GitHub token with write permissions to the main branch of remote repo.
+    required: true
+  deploy_aks_repo:
+    description: |
+      Repository hosting the <project>-deploy-aks, in the format <owner>/<repo>.
+    required: true
+  env:
+    description: |
+      Environment folder under helm/. Allowed values: dev, uat, prod.
+    required: true
+  level:
+    description: |
+      Level folder under helm/<env>/. Allowed values: ext, mid, top.
+    required: true
+  app:
+    description: |
+      Application folder under helm/<env>/<level>/.
+    required: true
+  image_tag:
+    description: |
+      Tag of the image to deploy, in the format <version>@sha256:<digest>.
+    required: true
+  bot_name:
+    description: |
+      Git author name used for the commit that updates the deployment
+      repository.
+    required: true
+
+runs:
+  using: composite
+
+  steps:
+    #
+    # Validate allowed input values.
+    #
+    - name: Validate env and level inputs
+      shell: bash
+      env:
+        ENV: ${{ inputs.env }}
+        LEVEL: ${{ inputs.level }}
+      run: |
+        set -euo pipefail
+
+        case "${ENV}" in
+          dev|uat|prod)
+            ;;
+          *)
+            echo "❌ Invalid env value: ${ENV}. Allowed values are: dev, uat, prod." >&2
+            exit 1
+            ;;
+        esac
+
+        case "${LEVEL}" in
+          ext|mid|top)
+            ;;
+          *)
+            echo "❌ Invalid level value: ${LEVEL}. Allowed values are: ext, mid, top." >&2
+            exit 1
+            ;;
+        esac
+
+    #
+    # Checkout <project>-deploy-aks.
+    #
+    - name: Checkout ${{ inputs.deploy_aks_repo }}
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      with:
+        repository: ${{ inputs.deploy_aks_repo }}
+        token: ${{ inputs.gh_token }}
+        ref: main
+
+    #
+    # Update image tag in values.yaml.
+    #
+    - name: Update image tag in values.yaml
+      shell: bash
+      env:
+        ENV: ${{ inputs.env }}
+        LEVEL: ${{ inputs.level }}
+        APP: ${{ inputs.app }}
+        IMAGE_TAG: ${{ inputs.image_tag }}
+      run: |
+        set -euo pipefail
+        sed -i "s|tag: .*|tag: ${IMAGE_TAG}|" "helm/${ENV}/${LEVEL}/${APP}/values.yaml"
+
+    #
+    # Commit and push to <project>-deploy-aks main.
+    #
+    - name: Commit and push to ${{ inputs.deploy_aks_repo }} main
+      shell: bash
+      env:
+        BOT_NAME: ${{ inputs.bot_name }}
+        ENV: ${{ inputs.env }}
+        LEVEL: ${{ inputs.level }}
+        APP: ${{ inputs.app }}
+        IMAGE_TAG: ${{ inputs.image_tag }}
+      run: |
+        set -euo pipefail
+        git config user.name "${BOT_NAME}"
+        git config user.email "<>"
+        git add "helm/${ENV}/${LEVEL}/${APP}/values.yaml"
+        git commit -m "Updated $APP image tag to ${IMAGE_TAG}"
+        git push origin main
