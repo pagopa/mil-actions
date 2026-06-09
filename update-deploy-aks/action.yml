@@ -1,69 +1,183 @@
-name: Update <project>-deploy-aks
-description: Updates <project>-deploy-aks.
+name: Update <project>-deploy-aks and Sync Argo CD
+description: Updates <project>-deploy-aks and Sync Argo CD.
 
 inputs:
   gh_token:
     description: |
-      GitHub token with write permissions to the main branch of remote repo.
+      GitHub token with write permissions to the main branch of
+      <project>-deploy-aks repository.
     required: true
   deploy_aks_repo:
     description: |
-      Repository hosting the <project>-deploy-aks, in the format <owner>/<repo>.
+      Repository hosting the <project>-deploy-aks, without owner.
     required: true
   env:
     description: |
-      Environment folder under helm/. Allowed values: dev, uat, prod.
+      Environment to deploy.
+      Allowed values: dev, uat, prod.
     required: true
   level:
     description: |
-      Level folder under helm/<env>/. Allowed values: ext, mid, top.
+      Level folder under helm/<env>/ of <project>-deploy-aks repository.
+      Allowed values: ext, mid, top.
     required: true
   app:
     description: |
-      Application folder under helm/<env>/<level>/.
+      Application folder under helm/<env>/<level>/ of <project>-deploy-aks
+      repository.
     required: true
-  image_tag:
+  image:
     description: |
-      Tag of the image to deploy, in the format <version>@sha256:<digest>.
+      Image to deploy with version and digest.
     required: true
   bot_name:
     description: |
-      Git author name used for the commit that updates the deployment
+      Git author name used for the commit that updates the <project>-deploy-aks
       repository.
     required: true
+  domain:
+    description: |
+      Domain of the application, used to trigger Argo CD sync.
+    required: true
+  argo_cd_server:
+    description: |
+      Argo CD server URL (without protocol), used to trigger Argo CD sync.
+    required: true
+  argo_cd_username:
+    description: |
+      Argo CD username, used to trigger Argo CD sync.
+    required: true
+  argo_cd_password:
+    description: |
+      Argo CD password, used to trigger Argo CD sync.
+    required: true
+  argo_cd_timeout:
+    description: |
+      Timeout in seconds for Argo CD operations (sync and wait).
+      Default: 300 seconds (5 minutes).
+    required: false
+    default: "300"
 
 runs:
   using: composite
 
   steps:
     #
-    # Validate allowed input values.
+    # Validate inputs and extract necessary data.
     #
-    - name: Validate env and level inputs
+    - name: Validate inputs and extract necessary data
+      id: validate_and_extract_data
       shell: bash
       env:
+        DEPLOY_AKS_REPO: ${{ inputs.deploy_aks_repo }}
         ENV: ${{ inputs.env }}
         LEVEL: ${{ inputs.level }}
+        APP: ${{ inputs.app }}
+        IMAGE: ${{ inputs.image }}
+        BOT_NAME: ${{ inputs.bot_name }}
+        DOMAIN: ${{ inputs.domain }}
+        ARGO_CD_TIMEOUT: ${{ inputs.argo_cd_timeout }}
       run: |
         set -euo pipefail
 
-        case "${ENV}" in
-          dev|uat|prod)
-            ;;
-          *)
-            echo "❌ Invalid env value: ${ENV}. Allowed values are: dev, uat, prod." >&2
-            exit 1
-            ;;
-        esac
+        #
+        # Validate deploy_aks_repo format.
+        #
+        if [[ "${DEPLOY_AKS_REPO}" =~ "^[a-zA-Z0-9_-]+$" ]]; then
+          echo "✅ Valid 'deploy_aks_repo' format: ${DEPLOY_AKS_REPO}"
+        else
+          echo "❌ Invalid 'deploy_aks_repo' value: ${DEPLOY_AKS_REPO}. Allowed format is: ^[a-zA-Z0-9_-]+$" >&2
+          exit 1
+        fi
+        
+        # 
+        # Validate env value.
+        #
+        if [[ "${ENV}" =~ "^(dev|uat|prod)$" ]]; then
+          echo "✅ Valid 'env' value: ${ENV}"
+        else
+          echo "❌ Invalid 'env' value: ${ENV}. Allowed values are: dev, uat, prod." >&2
+          exit 1
+        fi
+        
+        #
+        # Validate level value.
+        #
+        if [[ "${LEVEL}" =~ "^(ext|mid|top)$" ]]; then
+          echo "✅ Valid 'level' value: ${LEVEL}"
+        else
+          echo "❌ Invalid 'level' value: ${LEVEL}. Allowed values are: ext, mid, top." >&2
+          exit 1
+        fi
+        
+        #
+        # Validate app format.
+        #
+        if [[ "${APP}" =~ "^[a-zA-Z0-9_-]+$" ]]; then
+          echo "✅ Valid 'app' format: ${APP}"
+        else
+          echo "❌ Invalid 'app' value: ${APP}. Allowed format is: ^[a-zA-Z0-9_-]+$" >&2
+          exit 1
+        fi
+        
+        # 
+        # Validate bot_name format.
+        #
+        if [[ "${BOT_NAME}" =~ "^[a-zA-Z0-9_-]+$" ]]; then
+          echo "✅ Valid 'bot_name' format: ${BOT_NAME}"
+        else
+          echo "❌ Invalid 'bot_name' value: ${BOT_NAME}. Allowed format is: ^[a-zA-Z0-9_-]+$" >&2
+          exit 1
+        fi
+        
+        #
+        # Validate domain format.
+        #
+        if [[ "${DOMAIN}" =~ "^[a-zA-Z0-9.-]+$" ]]; then
+          echo "✅ Valid 'domain' format: ${DOMAIN}"
+        else
+          echo "❌ Invalid 'domain' value: ${DOMAIN}. Allowed format is: ^[a-zA-Z0-9.-]+$" >&2
+          exit 1
+        fi
+        
+        #
+        # Validate argo_cd_timeout value.
+        #
+        if [[ "${ARGO_CD_TIMEOUT}" =~ "^[0-9]+$" ]]; then
+          echo "✅ Valid 'argo_cd_timeout' value: ${ARGO_CD_TIMEOUT} seconds"
+        else
+          echo "❌ Invalid 'argo_cd_timeout' value: ${ARGO_CD_TIMEOUT}. Allowed format is a positive integer representing seconds." >&2
+          exit 1
+        fi
+        
+        #
+        # Validate image format.
+        #
+        if [[ "${IMAGE}" =~ "^(.*):([^:@]+)@(.+)$" ]]; then
+          echo "✅ Valid 'image' format: ${IMAGE}"
+          
+          # Extract the groups captured by the regex
+          REPOSITORY="${BASH_REMATCH[1]}"
+          VERSION="${BASH_REMATCH[2]}"
+          DIGEST="${BASH_REMATCH[3]}"
+            
+          # Build the required tag (version + digest)
+          TAG="${VERSION}@${DIGEST}"
 
-        case "${LEVEL}" in
-          ext|mid|top)
-            ;;
-          *)
-            echo "❌ Invalid level value: ${LEVEL}. Allowed values are: ext, mid, top." >&2
+          echo "ℹ️ Repository : ${REPOSITORY}"
+          echo "ℹ️ Version    : ${VERSION}"
+          echo "ℹ️ Digest     : ${DIGEST}"
+          echo "ℹ️ Tag        : ${TAG}"
+            
+          # Export as output for later steps.
+          echo "repository=${REPOSITORY}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+        else
+            echo "❌ Invalid 'image' format: ${IMAGE}. Allowed format is: <base_url>:<version>@<digest>" >&2
             exit 1
-            ;;
-        esac
+        fi
 
     #
     # Checkout <project>-deploy-aks.
@@ -78,16 +192,18 @@ runs:
     #
     # Update image tag in values.yaml.
     #
-    - name: Update image tag in values.yaml
+    - name: Update values.yaml
       shell: bash
       env:
         ENV: ${{ inputs.env }}
         LEVEL: ${{ inputs.level }}
         APP: ${{ inputs.app }}
-        IMAGE_TAG: ${{ inputs.image_tag }}
+        REPOSITORY: ${{ steps.validate_and_extract_data.outputs.repository }}
+        TAG: ${{ steps.validate_and_extract_data.outputs.tag }}
       run: |
         set -euo pipefail
-        sed -i "s|tag: .*|tag: ${IMAGE_TAG}|" "helm/${ENV}/${LEVEL}/${APP}/values.yaml"
+        sed -i "s|repository: .*|repository: ${REPOSITORY}|" "helm/${ENV}/${LEVEL}/${APP}/values.yaml"
+        sed -i "s|tag: .*|tag: ${TAG}|" "helm/${ENV}/${LEVEL}/${APP}/values.yaml"
 
     #
     # Commit and push to <project>-deploy-aks main.
@@ -99,11 +215,70 @@ runs:
         ENV: ${{ inputs.env }}
         LEVEL: ${{ inputs.level }}
         APP: ${{ inputs.app }}
-        IMAGE_TAG: ${{ inputs.image_tag }}
+        REPOSITORY: ${{ steps.validate_and_extract_data.outputs.repository }}
+        TAG: ${{ steps.validate_and_extract_data.outputs.tag }}
       run: |
         set -euo pipefail
         git config user.name "${BOT_NAME}"
         git config user.email "<>"
         git add "helm/${ENV}/${LEVEL}/${APP}/values.yaml"
-        git commit -m "Updated $APP image tag to ${IMAGE_TAG}"
+        if git diff --cached --quiet -- "helm/${ENV}/${LEVEL}/${APP}/values.yaml"; then
+          echo "ℹ️ No changes detected in helm/${ENV}/${LEVEL}/${APP}/values.yaml. Skipping commit and push."
+          exit 0
+        fi
+        git commit -m "Updated ${APP} image 'repository' to ${REPOSITORY} and 'tag' to ${TAG}"
         git push origin main
+
+    #
+    # Setup ArgoCD CLI.
+    #
+    - name: Setup ArgoCD CLI
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "fb230f97ba87b393746accf167067e0b75d20d2de5ee7cf847d50d4361f92e5f  ${{ runner.temp }}/argocd-linux-amd64" >> ${{ runner.temp }}/argocd-linux-amd64.sha256
+        curl -L "https://github.com/argoproj/argo-cd/releases/download/v3.4.3/argocd-linux-amd64" -o "${{ runner.temp }}/argocd-linux-amd64"
+        sha256sum --check --status "${{ runner.temp }}/argocd-linux-amd64.sha256"
+        mkdir -p "${{ runner.temp }}/argocd"
+        install -m 555 argocd-linux-amd64 "${{ runner.temp }}/argocd/argocd"
+        rm argocd-linux-amd64
+        echo "${{ runner.temp }}/argocd" >> "$GITHUB_PATH"
+
+    #
+    # Login to Argo CD.
+    #
+    - name: Login to Argo CD
+      shell: bash
+      env:
+        ARGOCD_SERVER: ${{ inputs.argo_cd_server }}
+        ARGOCD_USERNAME: ${{ inputs.argo_cd_username }}
+        ARGOCD_PASSWORD: ${{ inputs.argo_cd_password }}
+      run: |
+        set -euo pipefail
+        argocd login "${ARGOCD_SERVER}" --username "${ARGOCD_USERNAME}" --password "${ARGOCD_PASSWORD}"
+
+    #
+    # Trigger Argo CD sync.
+    #
+    - name: Trigger Argo CD sync for ${{ inputs.domain }}/${{ inputs.app }}
+      shell: bash
+      env:
+        DOMAIN: ${{ inputs.domain }}
+        APP: ${{ inputs.app }}
+        ARGO_CD_TIMEOUT: ${{ inputs.argo_cd_timeout }}
+      run: |
+        set -euo pipefail
+        argocd app sync "${DOMAIN}/${APP}" --prune --timeout ${ARGO_CD_TIMEOUT}
+
+    #
+    # Wait for the application to be healthy and synced.
+    #
+    - name: Wait for ${{ inputs.domain }}/${{ inputs.app }} to be healthy and synced
+      shell: bash
+      env:
+        DOMAIN: ${{ inputs.domain }}
+        APP: ${{ inputs.app }}
+        ARGO_CD_TIMEOUT: ${{ inputs.argo_cd_timeout }}
+      run: |
+        set -euo pipefail
+        argocd app wait "${DOMAIN}/${APP}" --sync --health --timeout ${ARGO_CD_TIMEOUT}
