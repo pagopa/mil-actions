@@ -236,12 +236,13 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        echo "fb230f97ba87b393746accf167067e0b75d20d2de5ee7cf847d50d4361f92e5f  ${{ runner.temp }}/argocd-linux-amd64" >> ${{ runner.temp }}/argocd-linux-amd64.sha256
-        curl -L "https://github.com/argoproj/argo-cd/releases/download/v3.4.3/argocd-linux-amd64" -o "${{ runner.temp }}/argocd-linux-amd64"
-        sha256sum --check --status "${{ runner.temp }}/argocd-linux-amd64.sha256"
-        mkdir -p "${{ runner.temp }}/argocd"
-        install -m 555 argocd-linux-amd64 "${{ runner.temp }}/argocd/argocd"
-        rm argocd-linux-amd64
+        cd "${{ runner.temp }}"
+        echo "fb230f97ba87b393746accf167067e0b75d20d2de5ee7cf847d50d4361f92e5f  argocd-linux-amd64" >> argocd-linux-amd64.sha256
+        curl -L "https://github.com/argoproj/argo-cd/releases/download/v3.4.3/argocd-linux-amd64" -o argocd-linux-amd64
+        sha256sum --check --status argocd-linux-amd64.sha256
+        mkdir -p argocd
+        install -m 555 argocd-linux-amd64 argocd/argocd
+        rm argocd-linux-amd64 argocd-linux-amd64.sha256
         echo "${{ runner.temp }}/argocd" >> "$GITHUB_PATH"
 
     #
