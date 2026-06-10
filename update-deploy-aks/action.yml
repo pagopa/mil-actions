@@ -9,7 +9,7 @@ inputs:
     required: true
   deploy_aks_repo:
     description: |
-      Repository hosting the <project>-deploy-aks, without owner.
+      Repository hosting the <project>-deploy-aks.
     required: true
   env:
     description: |
@@ -83,17 +83,17 @@ runs:
         #
         # Validate deploy_aks_repo format.
         #
-        if [[ "${DEPLOY_AKS_REPO}" =~ "^[a-zA-Z0-9_-]+$" ]]; then
+        if [[ "${DEPLOY_AKS_REPO}" =~ ^[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$ ]]; then
           echo "✅ Valid 'deploy_aks_repo' format: ${DEPLOY_AKS_REPO}"
         else
-          echo "❌ Invalid 'deploy_aks_repo' value: ${DEPLOY_AKS_REPO}. Allowed format is: ^[a-zA-Z0-9_-]+$" >&2
+          echo "❌ Invalid 'deploy_aks_repo' value: ${DEPLOY_AKS_REPO}. Allowed format is: ^[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$" >&2
           exit 1
         fi
         
         # 
         # Validate env value.
         #
-        if [[ "${ENV}" =~ "^(dev|uat|prod)$" ]]; then
+        if [[ "${ENV}" =~ ^(dev|uat|prod)$ ]]; then
           echo "✅ Valid 'env' value: ${ENV}"
         else
           echo "❌ Invalid 'env' value: ${ENV}. Allowed values are: dev, uat, prod." >&2
@@ -103,7 +103,7 @@ runs:
         #
         # Validate level value.
         #
-        if [[ "${LEVEL}" =~ "^(ext|mid|top)$" ]]; then
+        if [[ "${LEVEL}" =~ ^(ext|mid|top)$ ]]; then
           echo "✅ Valid 'level' value: ${LEVEL}"
         else
           echo "❌ Invalid 'level' value: ${LEVEL}. Allowed values are: ext, mid, top." >&2
@@ -113,7 +113,7 @@ runs:
         #
         # Validate app format.
         #
-        if [[ "${APP}" =~ "^[a-zA-Z0-9_-]+$" ]]; then
+        if [[ "${APP}" =~ ^[a-zA-Z0-9_-]+$ ]]; then
           echo "✅ Valid 'app' format: ${APP}"
         else
           echo "❌ Invalid 'app' value: ${APP}. Allowed format is: ^[a-zA-Z0-9_-]+$" >&2
@@ -123,7 +123,7 @@ runs:
         # 
         # Validate bot_name format.
         #
-        if [[ "${BOT_NAME}" =~ "^[a-zA-Z0-9_-]+$" ]]; then
+        if [[ "${BOT_NAME}" =~ ^[a-zA-Z0-9_-]+$ ]]; then
           echo "✅ Valid 'bot_name' format: ${BOT_NAME}"
         else
           echo "❌ Invalid 'bot_name' value: ${BOT_NAME}. Allowed format is: ^[a-zA-Z0-9_-]+$" >&2
@@ -133,7 +133,7 @@ runs:
         #
         # Validate domain format.
         #
-        if [[ "${DOMAIN}" =~ "^[a-zA-Z0-9.-]+$" ]]; then
+        if [[ "${DOMAIN}" =~ ^[a-zA-Z0-9.-]+$ ]]; then
           echo "✅ Valid 'domain' format: ${DOMAIN}"
         else
           echo "❌ Invalid 'domain' value: ${DOMAIN}. Allowed format is: ^[a-zA-Z0-9.-]+$" >&2
@@ -143,7 +143,7 @@ runs:
         #
         # Validate argo_cd_timeout value.
         #
-        if [[ "${ARGO_CD_TIMEOUT}" =~ "^[0-9]+$" ]]; then
+        if [[ "${ARGO_CD_TIMEOUT}" =~ ^[0-9]+$ ]]; then
           echo "✅ Valid 'argo_cd_timeout' value: ${ARGO_CD_TIMEOUT} seconds"
         else
           echo "❌ Invalid 'argo_cd_timeout' value: ${ARGO_CD_TIMEOUT}. Allowed format is a positive integer representing seconds." >&2
@@ -153,7 +153,7 @@ runs:
         #
         # Validate image format.
         #
-        if [[ "${IMAGE}" =~ "^(.*):([^:@]+)@(.+)$" ]]; then
+        if [[ "${IMAGE}" =~ ^(.*):([^:@]+)@(.+)$ ]]; then
           echo "✅ Valid 'image' format: ${IMAGE}"
           
           # Extract the groups captured by the regex
