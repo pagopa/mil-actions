@@ -77,7 +77,6 @@ runs:
         BOT_NAME: ${{ inputs.bot_name }}
         DOMAIN: ${{ inputs.domain }}
         ARGO_CD_TIMEOUT: ${{ inputs.argo_cd_timeout }}
-        ARGO_CD_SERVER: ${{ inputs.argo_cd_server }}
       run: |
         set -euo pipefail
 
@@ -179,8 +178,6 @@ runs:
             echo "❌ Invalid 'image' format: ${IMAGE}. Allowed format is: <base_url>:<version>@<digest>" >&2
             exit 1
         fi
-        
-        echo "ℹ️ Argo CD Server: ${ARGO_CD_SERVER}"
 
     #
     # Checkout <project>-deploy-aks.
@@ -233,9 +230,22 @@ runs:
         git push origin main
 
     #
-    # Setup ArgoCD CLI.
+    # Cache Argo CD CLI.
     #
-    - name: Setup ArgoCD CLI
+    - name: Cache Argo CD CLI
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # 5.0.3
+      id: cache-argocd
+      with:
+        key: argocd-linux-amd64-v3.4.3
+        path: |
+          ${{ runner.temp }}/argocd-linux-amd64
+          ${{ runner.temp }}/argocd-linux-amd64.sha256
+
+    #
+    # Download Argo CD CLI.
+    #
+    - name: Download Argo CD CLI and verify its hash
+      if: steps.cache-argocd.outputs.cache-hit != 'true'
       shell: bash
       run: |
         set -euo pipefail
@@ -243,6 +253,13 @@ runs:
         echo "fb230f97ba87b393746accf167067e0b75d20d2de5ee7cf847d50d4361f92e5f  argocd-linux-amd64" >> argocd-linux-amd64.sha256
         curl -L "https://github.com/argoproj/argo-cd/releases/download/v3.4.3/argocd-linux-amd64" -o argocd-linux-amd64
         sha256sum --check --status argocd-linux-amd64.sha256
+
+    #
+    # Install Argo CD CLI.
+    #
+    - name: Install Argo CD CLI
+      shell: bash
+      run: |
         mkdir -p argocd
         install -m 555 argocd-linux-amd64 argocd/argocd
         rm argocd-linux-amd64 argocd-linux-amd64.sha256
@@ -254,12 +271,12 @@ runs:
     - name: Login to Argo CD
       shell: bash
       env:
-        ARGOCD_SERVER: ${{ inputs.argo_cd_server }}
-        ARGOCD_USERNAME: ${{ inputs.argo_cd_username }}
-        ARGOCD_PASSWORD: ${{ inputs.argo_cd_password }}
+        ARGO_CD_SERVER: ${{ inputs.argo_cd_server }}
+        ARGO_CD_USERNAME: ${{ inputs.argo_cd_username }}
+        ARGO_CD_PASSWORD: ${{ inputs.argo_cd_password }}
       run: |
         set -euo pipefail
-        argocd login "${ARGOCD_SERVER}" --username "${ARGOCD_USERNAME}" --password "${ARGOCD_PASSWORD}"
+        argocd login "${ARGO_CD_SERVER}" --username "${ARGO_CD_USERNAME}" --password "${ARGO_CD_PASSWORD}" --grpc-web
 
     #
     # Trigger Argo CD sync.
@@ -272,7 +289,7 @@ runs:
         ARGO_CD_TIMEOUT: ${{ inputs.argo_cd_timeout }}
       run: |
         set -euo pipefail
-        argocd app sync "${DOMAIN}/${APP}" --prune --timeout ${ARGO_CD_TIMEOUT}
+        argocd app sync "${DOMAIN}/${APP}" --prune --timeout ${ARGO_CD_TIMEOUT} --grpc-web
 
     #
     # Wait for the application to be healthy and synced.
@@ -285,4 +302,4 @@ runs:
         ARGO_CD_TIMEOUT: ${{ inputs.argo_cd_timeout }}
       run: |
         set -euo pipefail
-        argocd app wait "${DOMAIN}/${APP}" --sync --health --timeout ${ARGO_CD_TIMEOUT}
+        argocd app wait "${DOMAIN}/${APP}" --sync --health --timeout ${ARGO_CD_TIMEOUT} --grpc-web
