@@ -77,6 +77,7 @@ runs:
         BOT_NAME: ${{ inputs.bot_name }}
         DOMAIN: ${{ inputs.domain }}
         ARGO_CD_TIMEOUT: ${{ inputs.argo_cd_timeout }}
+        ARGO_CD_SERVER: ${{ inputs.argo_cd_server }}
       run: |
         set -euo pipefail
 
@@ -178,6 +179,8 @@ runs:
             echo "❌ Invalid 'image' format: ${IMAGE}. Allowed format is: <base_url>:<version>@<digest>" >&2
             exit 1
         fi
+        
+        echo "ℹ️ Argo CD Server: ${ARGO_CD_SERVER}"
 
     #
     # Checkout <project>-deploy-aks.
