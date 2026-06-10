@@ -260,9 +260,9 @@ runs:
     - name: Install Argo CD CLI
       shell: bash
       run: |
-        mkdir -p argocd
-        install -m 555 argocd-linux-amd64 argocd/argocd
-        rm argocd-linux-amd64 argocd-linux-amd64.sha256
+        set -euo pipefail
+        mkdir -p "${{ runner.temp }}/argocd"
+        install -m 555 "${{ runner.temp }}/argocd-linux-amd64" "${{ runner.temp }}/argocd/argocd"
         echo "${{ runner.temp }}/argocd" >> "$GITHUB_PATH"
 
     #
