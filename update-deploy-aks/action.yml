@@ -30,7 +30,7 @@ inputs:
     description: |
       Image to deploy with version and digest.
     required: true
-  bot_name:
+  author:
     description: |
       Git author name used for the commit that updates the <project>-deploy-aks
       repository.
@@ -74,7 +74,7 @@ runs:
         LEVEL: ${{ inputs.level }}
         APP: ${{ inputs.app }}
         IMAGE: ${{ inputs.image }}
-        BOT_NAME: ${{ inputs.bot_name }}
+        AUTHOR: ${{ inputs.author }}
         DOMAIN: ${{ inputs.domain }}
         ARGO_CD_TIMEOUT: ${{ inputs.argo_cd_timeout }}
       run: |
@@ -121,12 +121,12 @@ runs:
         fi
         
         # 
-        # Validate bot_name format.
+        # Validate author format.
         #
-        if [[ "${BOT_NAME}" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-          echo "✅ Valid 'bot_name' format: ${BOT_NAME}"
+        if [[ "${AUTHOR}" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+          echo "✅ Valid 'bot_name' format: ${AUTHOR}"
         else
-          echo "❌ Invalid 'bot_name' value: ${BOT_NAME}. Allowed format is: ^[a-zA-Z0-9_-]+$" >&2
+          echo "❌ Invalid 'bot_name' value: ${AUTHOR}. Allowed format is: ^[a-zA-Z0-9_-]+$" >&2
           exit 1
         fi
         
@@ -211,7 +211,7 @@ runs:
     - name: Commit and push to ${{ inputs.deploy_aks_repo }} main
       shell: bash
       env:
-        BOT_NAME: ${{ inputs.bot_name }}
+        AUTHOR: ${{ inputs.author }}
         ENV: ${{ inputs.env }}
         LEVEL: ${{ inputs.level }}
         APP: ${{ inputs.app }}
@@ -219,7 +219,7 @@ runs:
         TAG: ${{ steps.validate_and_extract_data.outputs.tag }}
       run: |
         set -euo pipefail
-        git config user.name "${BOT_NAME}"
+        git config user.name "${AUTHOR}"
         git config user.email "<>"
         git add "helm/${ENV}/${LEVEL}/${APP}/values.yaml"
         if git diff --cached --quiet -- "helm/${ENV}/${LEVEL}/${APP}/values.yaml"; then
