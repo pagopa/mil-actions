@@ -3,10 +3,13 @@ description: Build and push native container image.
 
 inputs:
   gh_token:
-    description: GitHub token.
+    description: GitHub token
+    required: true
+  actor:
+    description: GitHub actor (user/bot) to use to auth when pushing the image
     required: true
   sonar_token:
-    description: SonarCloud token.
+    description: SonarCloud token
     required: true
   release_version:
     description: Version tag to use with container image
@@ -103,9 +106,10 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.gh_token }}
+        ACTOR: ${{ inputs.actor }}
         REPOSITORY: ${{ github.repository }}
       run: |
-        echo "$GH_TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        echo "$GH_TOKEN" | docker login ghcr.io -u $ACTOR --password-stdin
         docker push -a ghcr.io/$REPOSITORY
 
     #
