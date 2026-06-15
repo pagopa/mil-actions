@@ -1,63 +1,63 @@
 # Trigger Remote Workflow
 
-Composite GitHub Action che:
+Composite GitHub Action that:
 
-1. avvia un workflow in un repository remoto,
-2. attende che GitHub registri la nuova esecuzione,
-3. monitora lo stato della run fino al completamento,
-4. fallisce se la run remota termina con esito diverso da `success` o va in timeout.
+1. triggers a workflow in a remote repository,
+2. waits for GitHub to register the new run,
+3. polls the run status until completion,
+4. fails if the remote run does not end with `success` or if it times out.
 
-## Come funziona
+## How It Works
 
-L'action usa `gh` CLI con questi comandi:
+The action uses the `gh` CLI with these commands:
 
-- `gh workflow run` per avviare il workflow remoto;
-- `gh run list` per recuperare l'ID della run piu recente;
-- `gh run view` in polling per leggere `status` e `conclusion`.
+- `gh workflow run` to trigger the remote workflow;
+- `gh run list` to retrieve the latest run ID;
+- `gh run view` in a polling loop to read `status` and `conclusion`.
 
-Supporta anche input dinamici verso il workflow remoto tramite `workflow_inputs` nel formato:
+It also supports passing dynamic inputs to the remote workflow through `workflow_inputs` in this format:
 
 ```text
 key1=value1,key2=value2
 ```
 
-che vengono convertiti in:
+which is converted into:
 
 ```text
 --raw-field key1=value1 --raw-field key2=value2
 ```
 
-## Input
+## Inputs
 
-| Nome | Obbligatorio | Default | Descrizione |
+| Name | Required | Default | Description |
 | --- | --- | --- | --- |
-| `remote_gh_token` | Sì | - | Token GitHub usato dalla `gh` CLI verso il repository remoto. |
-| `remote_repo` | Sì | - | Repository remoto nel formato `owner/repo`. |
-| `remote_workflow` | Sì | - | File workflow da avviare nel repository remoto (es. `deploy.yml`). |
-| `waiting_after_trigger` | No | `10` | Secondi di attesa dopo il trigger prima di leggere la run. |
-| `waiting_between_attempts` | No | `20` | Secondi tra un controllo stato e il successivo. |
-| `max_attempts` | No | `30` | Numero massimo di tentativi prima del timeout. |
-| `workflow_inputs` | No | `""` | Lista `key=value` separata da virgola da passare al workflow remoto. |
+| `remote_gh_token` | Yes | - | GitHub token used by the `gh` CLI against the remote repository. |
+| `remote_repo` | Yes | - | Remote repository in `owner/repo` format. |
+| `remote_workflow` | Yes | - | Workflow file to trigger in the remote repository (for example, `deploy.yml`). |
+| `waiting_after_trigger` | No | `10` | Seconds to wait after triggering before reading the run list. |
+| `waiting_between_attempts` | No | `20` | Seconds to wait between status checks. |
+| `max_attempts` | No | `30` | Maximum polling attempts before timeout. |
+| `workflow_inputs` | No | `""` | Comma-separated `key=value` list to pass as workflow inputs. |
 
-## Permessi richiesti per `remote_gh_token`
+## Required Permissions for `remote_gh_token`
 
-Il token deve poter chiamare le API GitHub Actions sul **repository remoto** (`remote_repo`) per:
+The token must be allowed to call GitHub Actions APIs on the **remote repository** (`remote_repo`) in order to:
 
-- avviare una run (`workflow_dispatch`),
-- leggere lista run,
-- leggere stato e conclusione run.
+- trigger a run (`workflow_dispatch`),
+- read the run list,
+- read run status and conclusion.
 
-Configurazione consigliata:
+Recommended setup:
 
 - **Fine-grained PAT**:
-  - repository access: almeno il repository indicato in `remote_repo`;
+  - repository access: at least the repository configured in `remote_repo`;
   - repository permission `Actions`: **Read and write**.
-- **Classic PAT** (se usato):
-  - scope `repo` (o `public_repo` se il repository remoto e pubblico).
+- **Classic PAT** (if used):
+  - scope `repo` (or `public_repo` if the remote repository is public).
 
-> Nota: in alcune organizzazioni possono esserci policy aggiuntive che richiedono scope/permessi ulteriori.
+> Note: some organizations enforce additional policies that may require extra scopes or approvals.
 
-## Esempio d'uso
+## Usage Example
 
 ```yaml
 jobs:
@@ -66,7 +66,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Trigger workflow remoto
+      - name: Trigger remote workflow
         uses: pagopa/mil-actions/trigger-remote-workflow@main
         with:
           remote_gh_token: ${{ secrets.REMOTE_GH_TOKEN }}
@@ -78,10 +78,10 @@ jobs:
           workflow_inputs: "environment=uat,version=1.2.3"
 ```
 
-## Comportamento di fallimento
+## Failure Behavior
 
-L'action termina con errore se:
+The action fails if:
 
-- il trigger del workflow remoto fallisce;
-- viene raggiunto `max_attempts` prima del completamento;
-- la run remota termina con `conclusion != success`.
+- triggering the remote workflow fails;
+- `max_attempts` is reached before completion;
+- the remote run finishes with `conclusion != success`.
