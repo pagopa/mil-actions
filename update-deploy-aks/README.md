@@ -22,16 +22,6 @@ The GitHub token provided via the `gh_token` input must have **write access to t
 - check out the repository (read), and
 - commit and push the updated `values.yaml` (write).
 
-When using a workflow token (`secrets.GITHUB_TOKEN`), it is scoped to the current repository and **cannot** access external repositories. Therefore, a **Personal Access Token (PAT)** or a **GitHub App token** with the following permissions is required:
-
-| Scope / Permission | Level    | Reason                                                      |
-|--------------------|----------|-------------------------------------------------------------|
-| `contents`         | `write`  | Push the updated `values.yaml` to the deploy repository.   |
-| `metadata`         | `read`   | Required implicitly for any repository access on GitHub.   |
-
-If using a **GitHub App** (recommended for CI/CD), grant:
-- **Repository permissions → Contents → Read and write** on the target `<project>-deploy-aks` repository.
-
 > ⚠️ If branch protection rules are enabled on `main`, the token owner must also be granted **bypass privileges** or the protection rules must allow the bot/app to push directly.
 
 ---
@@ -60,28 +50,26 @@ If using a **GitHub App** (recommended for CI/CD), grant:
 ```yaml
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted-job, uat]
     permissions:
       contents: read   # only the calling repo; deploy repo access is via gh_token
     steps:
       - name: Update deploy-aks and sync Argo CD
-        uses: pagopa/mil-actions/update-deploy-aks@<ref>
+        uses: pagopa/mil-actions/update-deploy-aks@73bd024abeec34d2dc0ac43999301015e817a472 # 2.0.7
         with:
-          gh_token:          ${{ secrets.DEPLOY_AKS_TOKEN }}
-          deploy_aks_repo:   pagopa/my-project-deploy-aks
-          env:               dev
-          level:             ext
-          app:               my-service
-          image:             ghcr.io/pagopa/my-service:1.2.3@sha256:abc123...
-          author:            my-bot
-          domain:            my-domain
-          argo_cd_server:    argocd.example.com
-          argo_cd_username:  ${{ secrets.ARGOCD_USERNAME }}
-          argo_cd_password:  ${{ secrets.ARGOCD_PASSWORD }}
-          argo_cd_timeout:   "600"
+          gh_token: ${{ secrets.GIT_PAT }}
+          author: idpay-gh-bot
+          deploy_aks_repo: pagopa/idpay-deploy-aks
+          env: uat
+          level: top
+          app: mcshared-datavault
+          image: ghcr.io/pagopa/mcshared-datavault:3.2.5@sha256:130e722be2b73b38c06251490cbc555ae633da80c53b6eb192bc5326f2edea6d
+          domain: idpay
+          argo_cd_server: ${{ vars.ARGO_CD_SERVER }}
+          argo_cd_username: ${{ secrets.ARGO_CD_USERNAME }}
+          argo_cd_password: ${{ secrets.ARGO_CD_PASSWORD }}
+          argo_cd_timeout: 600 # 10 minutes
 ```
-
-> `DEPLOY_AKS_TOKEN` must be stored as a repository/organisation secret and must be a PAT or GitHub App token with `contents: write` on the `my-project-deploy-aks` repository.
 
 ---
 
