@@ -29,7 +29,7 @@ The GitHub token provided via the `gh_token` input must have **write access to t
 ## Inputs
 
 | Input              | Required | Default | Description                                                                                                                     |
-|--------------------|----------|---------|---------------------------------------------------------------------------------------------------------------------------------|
+|--------------------|:--------:|:-------:|---------------------------------------------------------------------------------------------------------------------------------|
 | `gh_token`         | ✅       |         | GitHub token with write permissions to the main branch of the `<project>-deploy-aks` repository.                               |
 | `deploy_aks_repo`  | ✅       |         | Repository hosting the `<project>-deploy-aks`, in the format `<owner>/<repo>`.                                                  |
 | `env`              | ✅       |         | Target environment. Allowed values: `dev`, `uat`, `prod`.                                                                       |
